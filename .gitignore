@@ -1,0 +1,11 @@
+Build/
+build/
+.vscode/
+src/SMOKE
+records/*
+
+src/SMOKE_debug
+cmake-build-debug/
+.DS_Store
+.idea/
+
