@@ -85,7 +85,7 @@ protected:
 
 	GridDataX mU; // X component of velocity, stored on X faces, size is (dimX+1)*dimY*dimZ
 	GridDataY mV; // Y component of velocity, stored on Y faces, size is dimX*(dimY+1)*dimZ
-	GridDataZ mW; // W component of velocity, stored on Z faces, size is dimX*dimY*(dimZ+1)
+	GridDataZ mW; // Z component of velocity, stored on Z faces, size is dimX*dimY*(dimZ+1)
 	GridData mP;  // Pressure, stored at grid centers, size is dimX*dimY*dimZ
 	GridData mD;  // Density, stored at grid centers, size is dimX*dimY*dimZ
 	GridData mT;  // Temperature, stored at grid centers, size is dimX*dimY*dimZ

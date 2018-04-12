@@ -10,7 +10,7 @@
 // GridData is capable of storing any data in a grid
 // Columns are indexed with i and increase with increasing x
 // Rows are indexed with j and increase with z
-// Stacks are indexed with k and incrase with y
+// Stacks are indexed with k and increase with y
 //
 // GridData is initialized by global variables theDim and theCellSize
 // defined in GridData.cpp.  theDim defines the number of cells in 
@@ -25,7 +25,7 @@ public:
    virtual ~GridData();
    virtual GridData& operator=(const GridData& orig);
 
-   // Initialize underlying data structure with dlftValue
+   // Initialize underlying data structure with dfltValue
    virtual void initialize(double dfltValue = 0.0);
 
    // Returns editable data at index (i,j,k).
