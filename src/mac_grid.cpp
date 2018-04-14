@@ -211,12 +211,6 @@ void MACGrid::computeBouyancy(double dt) {
 }
 
 void MACGrid::computeVorticityConfinement(double dt) {
-
-//    // use target as a temp storage for
-//    target.mU = mU;
-//    target.mV = mV;
-//    target.mW = mW;
-
     GridData u; u.initialize(); // vel at cell center
     GridData v; v.initialize();
     GridData w; w.initialize();
@@ -241,23 +235,26 @@ void MACGrid::computeVorticityConfinement(double dt) {
     }
 
     // Compute the vorticity at faces and add to vels
+    target.mU = mU;
+    target.mV = mV;
+    target.mW = mW;
     FOR_EACH_FACE {
         // X
-        if(isValidFace(MACGrid::X, i, j, k) && isValidCell(i, j, k) && isValidCell(i+1, j, k)) {
-            double vortX = (vorticityX(i, j, k) + vorticityX(i+1, j, k)) / 2.0;
-            target.mU(i, j, k) = mU(i, j, k) + dt * vortX;
+        if(isValidFace(MACGrid::X, i, j, k) && isValidCell(i-1, j, k) && isValidCell(i, j, k)) {
+            double vortX = (vorticityX(i-1, j, k) + vorticityX(i, j, k)) / 2.0;
+            target.mU(i, j, k) += dt * vortX;
         }
 
         // Y
-        if(isValidFace(MACGrid::Y, i, j, k) && isValidCell(i, j, k) && isValidCell(i, j+1, k)) {
-            double vortY = (vorticityY(i, j, k) + vorticityY(i, j+1, k)) / 2.0;
-            target.mV(i, j, k) = mV(i, j, k) + dt * vortY;
+        if(isValidFace(MACGrid::Y, i, j, k) && isValidCell(i, j-1, k) && isValidCell(i, j, k)) {
+            double vortY = (vorticityY(i, j-1, k) + vorticityY(i, j, k)) / 2.0;
+            target.mV(i, j, k) += dt * vortY;
         }
 
         // Z
-        if(isValidFace(MACGrid::Z, i, j, k) && isValidCell(i, j, k) && isValidCell(i, j, k+1)) {
-            double vortZ = (vorticityZ(i, j, k) + vorticityZ(i, j, k+1)) / 2.0;
-            target.mW(i, j, k) = mW(i, j, k) + dt * vortZ;
+        if(isValidFace(MACGrid::Z, i, j, k) && isValidCell(i, j, k-1) && isValidCell(i, j, k)) {
+            double vortZ = (vorticityZ(i, j, k-1) + vorticityZ(i, j, k)) / 2.0;
+            target.mW(i, j, k) += dt * vortZ;
         }
     }
 
@@ -272,22 +269,59 @@ void MACGrid::addExternalForces(double dt) {
 }
 
 void MACGrid::project(double dt) {
-    // TODO: Solve Ax = b for pressure
-    // 1. Contruct b
-    // 2. Construct A
-    // 3. Solve for p
-    // Subtract pressure from our velocity and save in target
-    // STARTED.
+    // AP = D
 
-    // TODO: Get rid of these 3 lines after you implement yours
+    double density = 1.0; // ???
+    double constMultiplier = - density * theCellSize * theCellSize / dt; // sig notes: page 31..
+
+    GridData p = GridData(); p.initialize();
+    GridData d = GridData(); d.initialize();
+
+    // Compute divergence d1
+    FOR_EACH_CELL {
+        double velLowX = (i > 0) ? mU(i, j, k) : 0.0;
+        double velHighX = (i+1 < theDim[MACGrid::X]) ? mU(i+1, j, k) : 0.0;
+        double velLowY = (j > 0) ? mV(i, j, k) : 0.0;
+        double velHighY = (j+1 < theDim[MACGrid::Y]) ? mV(i, j+1, k) : 0.0;
+        double velLowZ = (k > 0) ? mW(i, j, k) : 0.0;
+        double velHighZ = (k+1 < theDim[MACGrid::Z]) ? mW(i, j, k+1) : 0.0;
+        d(i, j, k) = ((velHighX - velLowX) + (velHighY - velLowY) + (velHighZ - velLowZ)) / theCellSize;
+    }
+
+    // Compute pressure p
+    preconditionedConjugateGradient(AMatrix, p, d, 200, 0.01);
+
+    FOR_EACH_CELL {
+        p(i, j, k) *= constMultiplier;
+    }
+
+    target.mP = mP;
+
+
+    // Update velocities using p.. refer class notes for equations
     target.mU = mU;
     target.mV = mV;
     target.mW = mW;
+    FOR_EACH_FACE {
+        // X
+        if(isValidFace(MACGrid::X, i, j, k) && isValidCell(i-1, j, k) && isValidCell(i, j, k)) {
+            double deltaPX = p(i, j, k) - p(i-1, j, k);
+            target.mU(i, j, k) -= (dt / density) * deltaPX;
+        }
 
-    // TODO: Your code is here. It solves for a pressure field and modifies target.mU,mV,mW for all faces.
-    //
-    //
-    //
+        // Y
+        if(isValidFace(MACGrid::Y, i, j, k) && isValidCell(i, j-1, k) && isValidCell(i, j, k)) {
+            double deltaPY = p(i, j, k) - p(i, j-1, k);
+            target.mV(i, j, k) -= (dt / density) * deltaPY;
+        }
+
+        // Z
+        if(isValidFace(MACGrid::Z, i, j, k) && isValidCell(i, j, k-1) && isValidCell(i, j, k)) {
+            double deltaPZ = p(i, j, k) - p(i, j, k-1);
+            target.mW(i, j, k) -= (dt / density) * deltaPZ;
+        }
+    }
+
 
 #ifdef _DEBUG
     // Check border velocities:
@@ -584,8 +618,8 @@ bool MACGrid::preconditionedConjugateGradient(const GridDataMatrix &A, GridData 
     // Solves Ap = d for p.
 
     FOR_EACH_CELL {
-                p(i, j, k) = 0.0; // Initial guess p = 0.
-            }
+        p(i, j, k) = 0.0; // Initial guess p = 0.
+    }
 
     GridData r = d; // Residual vector.
 
