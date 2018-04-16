@@ -87,19 +87,47 @@ void MACGrid::initialize() {
 void MACGrid::updateSources() {
     // Set initial values for density, temperature, velocity
 
-    for (int i = 6; i < 12; i++) {
+//    if(dir == 0) {
+//        dir = 1;
+//    }
+//
+//    if(currentStep >= 50 || currentStep < -50) {
+//        //currentStep = 1;
+//        dir = -dir;
+//    }
+//
+//    for (int i = 13; i < 18; i++) {
+//        for (int j = 0; j < 5; j++) {
+////            if(currentStep < 10)
+////            {
+//                mU(i, j, 0) = currentStep / 20.0;
+//                mV(i, j, 0) = 2;
+////            }
+////            else
+////            {
+////                mV(i, j, 0) = 2.0;
+////            }
+//
+//            mD(i, j, 0) = 1.0;
+//            mT(i, j, 0) = 1.0;
+//        }
+//    }
+//    currentStep += dir;
+
+    for (int i = 20; i < 24; i++) {
         for (int j = 0; j < 5; j++) {
-            mV(i, j + 1, 0) = 2.0;
-            mV(i, j + 2, 0) = 2.0; // ????
-            mD(i, j, 0) = 1.0;
-            mT(i, j, 0) = 1.0;
+            for (int k = 20; k < 24; k++) {
+                mV(i, j, k) = 2.0;
+                mD(i, j, k) = 1.0;
+                mT(i, j, k) = 1.0;
+            }
         }
     }
 
     // Refresh particles in source.
-    for (int i = 6; i < 12; i++) {
+    for (int i = 20; i < 24; i++) {
         for (int j = 0; j < 5; j++) {
-            for (int k = 0; k <= 0; k++) {
+            for (int k = 20; k <= 24; k++) {
                 vec3 cell_center(theCellSize * (i + 0.5), theCellSize * (j + 0.5), theCellSize * (k + 0.5));
                 for (int p = 0; p < 10; p++) {
                     double a = ((float) rand() / RAND_MAX - 0.5) * theCellSize;
@@ -112,6 +140,22 @@ void MACGrid::updateSources() {
             }
         }
     }
+
+//    for (int i = 44; i < 48; i++) {
+//        for (int j = 0; j < 5; j++) {
+//            for (int k = 0; k <= 0; k++) {
+//                vec3 cell_center(theCellSize * (i + 0.5), theCellSize * (j + 0.5), theCellSize * (k + 0.5));
+//                for (int p = 0; p < 10; p++) {
+//                    double a = ((float) rand() / RAND_MAX - 0.5) * theCellSize;
+//                    double b = ((float) rand() / RAND_MAX - 0.5) * theCellSize;
+//                    double c = ((float) rand() / RAND_MAX - 0.5) * theCellSize;
+//                    vec3 shift(a, b, c);
+//                    vec3 xp = cell_center + shift;
+//                    rendering_particles.push_back(xp);
+//                }
+//            }
+//        }
+//    }
 }
 
 
@@ -198,12 +242,13 @@ void MACGrid::advectDensity(double dt) {
 
 void MACGrid::computeBouyancy(double dt) {
     // reference: class slides - slide 9
+    target.mV = mV;
     FOR_EACH_FACE {
         if(isValidFace(MACGrid::Y, i, j, k)) {
             vec3 facePos = getFacePosition(MACGrid::Y, i, j, k);
-            double buoyancy = -theBuoyancyAlpha * getDensity(facePos)
+            double buoyancy = - theBuoyancyAlpha * getDensity(facePos)
                               + theBuoyancyBeta * (getTemperature(facePos) - theBuoyancyAmbientTemperature);
-            target.mV(i, j, k) = mV(i, j, k) + dt * buoyancy;
+            target.mV(i, j, k) += dt * buoyancy;
         }
     }
 

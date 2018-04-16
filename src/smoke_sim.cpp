@@ -7,6 +7,8 @@
 #include "basic_math.h"
 #include <fstream>
 
+#define WRITEBGEOS 1
+
 SmokeSim::SmokeSim() : mFrameNum(0), mTotalFrameNum(0), mRecordEnabled(false)
 {
    reset();
@@ -110,8 +112,10 @@ void SmokeSim::grabScreen()  // Code adapted from asst#1 . USING STB_IMAGE_WRITE
 	if (mFrameNum > 9999) exit(0);
 
 	// Save density field to a .bgeo file
-	std::string densityFile = "../records/DensityFrame" + std::to_string(mFrameNum) + ".bgeo";
+#if WRITEBGEOS
+	std::string densityFile = "/media/rishabh/UBUNTU 16_0/Smoke/records/temp/DensityFrame" + std::to_string(mFrameNum) + ".bgeo"; //../records/DensityFrame
 	mGrid.saveDensity(densityFile);
+#endif
 
 	// Save an image:
 	unsigned char* bitmapData = new unsigned char[3 * recordWidth * recordHeight];
@@ -121,13 +125,15 @@ void SmokeSim::grabScreen()  // Code adapted from asst#1 . USING STB_IMAGE_WRITE
 			bitmapData + (recordWidth * 3 * ((recordHeight-1)-i)));
 	}
 	char anim_filename[2048];
-	snprintf(anim_filename, 2048, "../records/smoke_%04d.png", mFrameNum); 
+	snprintf(anim_filename, 2048, "/media/rishabh/UBUNTU 16_0/Smoke/records/temp/smoke_%04d.png", mFrameNum); // ../records/smoke_%04d.png
 	stbi_write_png(anim_filename, recordWidth, recordHeight, 3, bitmapData, recordWidth * 3);
 	delete [] bitmapData;
 
 	// Dump out rendering particle data in .bgeo file
-	std::string particleFile = "../records/frame" + std::to_string(mFrameNum) + ".bgeo";
+#if WRITEBGEOS
+	std::string particleFile = "/media/rishabh/UBUNTU 16_0/Smoke/records/temp/frame" + std::to_string(mFrameNum) + ".bgeo"; // ../records/frame
 	mGrid.saveParticle(particleFile);
+#endif
 
 	mFrameNum++;
 }

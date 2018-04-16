@@ -4,8 +4,12 @@ build/
 src/SMOKE
 records/*
 
-src/SMOKE_debug
-cmake-build-debug/
 .DS_Store
 .idea/
+
+src/SMOKE_debug
+cmake-build-debug/
+
+Houdini/backup/
+Houdini/ifds/
 

@@ -30,6 +30,20 @@ public:
 	void advectDensity(double dt);
 	void advectRenderingParticles(double dt);
 
+public:
+
+	// rendering particles
+	std::vector<vec3> rendering_particles;
+	std::vector<vec3> rendering_particles_vel;
+
+	enum RenderMode { CUBES, SHEETS };
+	static RenderMode theRenderMode;
+	static bool theDisplayVel;
+
+	void saveSmoke(const char* fileName);
+	void saveParticle(std::string filename);
+	void saveDensity(std::string filename);
+
 protected:
 
 	// Setup
@@ -94,21 +108,8 @@ protected:
 	GridDataMatrix AMatrix;
 	GridData precon;
 
-
-public:
-
-	// rendering particles
-	std::vector<vec3> rendering_particles;
-	std::vector<vec3> rendering_particles_vel;
-
-	enum RenderMode { CUBES, SHEETS };
-	static RenderMode theRenderMode;
-	static bool theDisplayVel;
-	
-	
-	void saveSmoke(const char* fileName);
-	void saveParticle(std::string filename);
-	void saveDensity(std::string filename);
+	int currentStep;
+	int dir;
 };
 
 #endif
