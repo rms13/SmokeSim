@@ -76,6 +76,8 @@ void MACGrid::reset() {
     mD.initialize();
     mT.initialize(0.0);
 
+    solidCells.initialize(0.0);
+
     calculateAMatrix();
     calculatePreconditioner(AMatrix);
 }
@@ -114,20 +116,26 @@ void MACGrid::updateSources() {
 //    }
 //    currentStep += dir;
 
-    for (int i = 20; i < 24; i++) {
-        for (int j = 0; j < 5; j++) {
-            for (int k = 20; k < 24; k++) {
-                mV(i, j, k) = 2.0;
+    int minx = 6, miny = 0, minz = 6;
+    int maxx = 10, maxy = 4, maxz = 10;
+
+    for (int i = minx; i < maxx; i++) {
+        for (int j = miny; j < maxy; j++) {
+            for (int k = minz; k < maxz; k++) {
+                mV(i, j, k) = 3.0;
                 mD(i, j, k) = 1.0;
-                mT(i, j, k) = 1.0;
+                mT(i, j, k) = 100.0;
+                // solidCells(i, j, k) = 0.0; // set an empty canvas for solids // done in constructor..
             }
         }
     }
 
+    initializeSolids();
+
     // Refresh particles in source.
-    for (int i = 20; i < 24; i++) {
-        for (int j = 0; j < 5; j++) {
-            for (int k = 20; k <= 24; k++) {
+    for (int i = minx; i < maxx; i++) {
+        for (int j = miny; j < maxy; j++) {
+            for (int k = minz; k < maxz; k++) {
                 vec3 cell_center(theCellSize * (i + 0.5), theCellSize * (j + 0.5), theCellSize * (k + 0.5));
                 for (int p = 0; p < 10; p++) {
                     double a = ((float) rand() / RAND_MAX - 0.5) * theCellSize;
@@ -140,22 +148,20 @@ void MACGrid::updateSources() {
             }
         }
     }
+}
 
-//    for (int i = 44; i < 48; i++) {
-//        for (int j = 0; j < 5; j++) {
-//            for (int k = 0; k <= 0; k++) {
-//                vec3 cell_center(theCellSize * (i + 0.5), theCellSize * (j + 0.5), theCellSize * (k + 0.5));
-//                for (int p = 0; p < 10; p++) {
-//                    double a = ((float) rand() / RAND_MAX - 0.5) * theCellSize;
-//                    double b = ((float) rand() / RAND_MAX - 0.5) * theCellSize;
-//                    double c = ((float) rand() / RAND_MAX - 0.5) * theCellSize;
-//                    vec3 shift(a, b, c);
-//                    vec3 xp = cell_center + shift;
-//                    rendering_particles.push_back(xp);
-//                }
-//            }
-//        }
-//    }
+void MACGrid::initializeSolids() {
+
+    // CUBE
+    int minx = 8, miny = 10, minz = 0;
+    int maxx = 12, maxy = 15, maxz = 16;
+    for (int i = minx; i < maxx; i++) {
+        for (int j = miny; j < maxy; j++) {
+            for (int k = minz; k < maxz; k++) {
+                solidCells(i,j,k) = 1.0;
+            }
+        }
+    }
 }
 
 
@@ -202,10 +208,12 @@ void MACGrid::advectVelocity(double dt) {
 
 void MACGrid::advectTemperature(double dt) {
     FOR_EACH_CELL {
-        vec3 currentPt = getCenter(i, j, k);
-        vec3 oldPt = getRewoundPosition(currentPt, dt);
-        double newTemp = getTemperature(oldPt);
-        target.mT(i, j, k) = newTemp;
+        if(isValidCell(i, j, k)) {
+            vec3 currentPt = getCenter(i, j, k);
+            vec3 oldPt = getRewoundPosition(currentPt, dt);
+            double newTemp = getTemperature(oldPt);
+            target.mT(i, j, k) = newTemp;
+        }
     };
 
     mT = target.mT;
@@ -231,10 +239,12 @@ void MACGrid::advectRenderingParticles(double dt) {
 
 void MACGrid::advectDensity(double dt) {
     FOR_EACH_CELL {
-        vec3 currentPt = getCenter(i, j, k);
-        vec3 oldPt = getRewoundPosition(currentPt, dt);
-        double newDensity = getDensity(oldPt);
-        target.mD(i, j, k) = newDensity;
+        if(isValidCell(i, j, k)) {
+            vec3 currentPt = getCenter(i, j, k);
+            vec3 oldPt = getRewoundPosition(currentPt, dt);
+            double newDensity = getDensity(oldPt);
+            target.mD(i, j, k) = newDensity;
+        }
     };
 
     mD = target.mD;
@@ -266,17 +276,21 @@ void MACGrid::computeVorticityConfinement(double dt) {
 
     // Compute the vel at cell centers
     FOR_EACH_CELL {
-        u(i,j,k) = (mU(i+1,j,k) + mU(i,j,k)) / 2;
-        v(i,j,k) = (mV(i,j+1,k) + mV(i,j,k)) / 2;
-        w(i,j,k) = (mW(i,j,k+1) + mW(i,j,k)) / 2;
+        if(isValidCell(i, j, k)) {
+            u(i, j, k) = (mU(i + 1, j, k) + mU(i, j, k)) / 2;
+            v(i, j, k) = (mV(i, j + 1, k) + mV(i, j, k)) / 2;
+            w(i, j, k) = (mW(i, j, k + 1) + mW(i, j, k)) / 2;
+        }
     }
 
     // Compute the vorticity at cell centers
     double inv2h = 1.0 / (2.0 * theCellSize);
     FOR_EACH_CELL {
-        vorticityX(i,j,k) = inv2h * (w(i, j+1, k) - w(i, j-1, k) - v(i, j, k+1) + v(i, j, k-1));
-        vorticityY(i,j,k) = inv2h * (u(i, j, k+1) - u(i, j, k-1) - w(i+1, j, k) + w(i-1, j, k));
-        vorticityZ(i,j,k) = inv2h * (v(i+1, j, k) - v(i-1, j, k) - u(i, j+1, k) + u(i, j-1, k));
+        if(isValidCell(i, j, k)) {
+            vorticityX(i, j, k) = inv2h * (w(i, j + 1, k) - w(i, j - 1, k) - v(i, j, k + 1) + v(i, j, k - 1));
+            vorticityY(i, j, k) = inv2h * (u(i, j, k + 1) - u(i, j, k - 1) - w(i + 1, j, k) + w(i - 1, j, k));
+            vorticityZ(i, j, k) = inv2h * (v(i + 1, j, k) - v(i - 1, j, k) - u(i, j + 1, k) + u(i, j - 1, k));
+        }
     }
 
     // Compute the vorticity at faces and add to vels
@@ -324,20 +338,24 @@ void MACGrid::project(double dt) {
 
     // Compute divergence d1
     FOR_EACH_CELL {
-        double velLowX = (i > 0) ? mU(i, j, k) : 0.0;
-        double velHighX = (i+1 < theDim[MACGrid::X]) ? mU(i+1, j, k) : 0.0;
-        double velLowY = (j > 0) ? mV(i, j, k) : 0.0;
-        double velHighY = (j+1 < theDim[MACGrid::Y]) ? mV(i, j+1, k) : 0.0;
-        double velLowZ = (k > 0) ? mW(i, j, k) : 0.0;
-        double velHighZ = (k+1 < theDim[MACGrid::Z]) ? mW(i, j, k+1) : 0.0;
-        d(i, j, k) = ((velHighX - velLowX) + (velHighY - velLowY) + (velHighZ - velLowZ)) / theCellSize;
+        if(isValidCell(i, j, k)) {
+            double velLowX = (i > 0) ? mU(i, j, k) : 0.0;
+            double velHighX = (i + 1 < theDim[MACGrid::X]) ? mU(i + 1, j, k) : 0.0;
+            double velLowY = (j > 0) ? mV(i, j, k) : 0.0;
+            double velHighY = (j + 1 < theDim[MACGrid::Y]) ? mV(i, j + 1, k) : 0.0;
+            double velLowZ = (k > 0) ? mW(i, j, k) : 0.0;
+            double velHighZ = (k + 1 < theDim[MACGrid::Z]) ? mW(i, j, k + 1) : 0.0;
+            d(i, j, k) = ((velHighX - velLowX) + (velHighY - velLowY) + (velHighZ - velLowZ)) / theCellSize;
+        }
     }
 
     // Compute pressure p
     preconditionedConjugateGradient(AMatrix, p, d, 200, 0.01);
 
     FOR_EACH_CELL {
-        p(i, j, k) *= constMultiplier;
+        if(isValidCell(i, j, k)) {
+            p(i, j, k) *= constMultiplier;
+        }
     }
 
     target.mP = mP;
@@ -584,6 +602,10 @@ bool MACGrid::isValidCell(int i, int j, int k) {
         return false;
     }
 
+    if(solidCells(i, j, k) == 1.0) {
+        return false;
+    }
+
     return true;
 }
 
@@ -593,12 +615,21 @@ bool MACGrid::isValidFace(int dimension, int i, int j, int k) {
         if (i > theDim[MACGrid::X] || j >= theDim[MACGrid::Y] || k >= theDim[MACGrid::Z]) {
             return false;
         }
+        if(solidCells(i-1, j, k) == 1.0) {
+            return false;
+        }
     } else if (dimension == 1) {
         if (i >= theDim[MACGrid::X] || j > theDim[MACGrid::Y] || k >= theDim[MACGrid::Z]) {
             return false;
         }
+        if(solidCells(i, j-1, k) == 1.0) {
+            return false;
+        }
     } else if (dimension == 2) {
         if (i >= theDim[MACGrid::X] || j >= theDim[MACGrid::Y] || k > theDim[MACGrid::Z]) {
+            return false;
+        }
+        if(solidCells(i, j, k-1) == 1.0) {
             return false;
         }
     }

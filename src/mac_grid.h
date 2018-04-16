@@ -8,6 +8,7 @@
 #include "grid_data.h"
 #include "grid_data_matrix.h" 
 #include <Partio.h>
+#include <vector>
 class Camera;
 
 class MACGrid
@@ -29,6 +30,8 @@ public:
 	void advectTemperature(double dt);
 	void advectDensity(double dt);
 	void advectRenderingParticles(double dt);
+
+	void initializeSolids();
 
 public:
 
@@ -104,6 +107,7 @@ protected:
 	GridData mD;  // Density, stored at grid centers, size is dimX*dimY*dimZ
 	GridData mT;  // Temperature, stored at grid centers, size is dimX*dimY*dimZ
 
+    GridData solidCells;
 	
 	GridDataMatrix AMatrix;
 	GridData precon;
