@@ -33,10 +33,13 @@ public:
 
 	void initializeSolids();
 
-    void advectVelocityThread(int tid, double dt);
+    // void advectVelocityThread(int tid, double dt);
     void advectVelocityThreadX(int tid, double dt);
     void advectVelocityThreadY(int tid, double dt);
     void advectVelocityThreadZ(int tid, double dt);
+    void advectTemperatureThread(int tid, double dt, int kmin, int kmax);
+    void advectDensityThread(int tid, double dt, int kmin, int kmax);
+    void computeBouyancyThread(int tid, double dt, int kmin, int kmax);
 
 public:
 

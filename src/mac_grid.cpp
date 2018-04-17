@@ -93,34 +93,6 @@ void MACGrid::initialize() {
 
 void MACGrid::updateSources() {
     // Set initial values for density, temperature, velocity
-
-//    if(dir == 0) {
-//        dir = 1;
-//    }
-//
-//    if(currentStep >= 50 || currentStep < -50) {
-//        //currentStep = 1;
-//        dir = -dir;
-//    }
-//
-//    for (int i = 13; i < 18; i++) {
-//        for (int j = 0; j < 5; j++) {
-////            if(currentStep < 10)
-////            {
-//                mU(i, j, 0) = currentStep / 20.0;
-//                mV(i, j, 0) = 2;
-////            }
-////            else
-////            {
-////                mV(i, j, 0) = 2.0;
-////            }
-//
-//            mD(i, j, 0) = 1.0;
-//            mT(i, j, 0) = 1.0;
-//        }
-//    }
-//    currentStep += dir;
-
     int minx = 6, miny = 0, minz = 6;
     int maxx = 10, maxy = 4, maxz = 10;
 
@@ -212,38 +184,7 @@ void MACGrid::advectVelocityThreadZ(int tid, double dt) {
 }
 
 void MACGrid::advectVelocity(double dt) {
-    /*
-        FOR_EACH_FACE
-            currentpt = position at center of current face
-            currentvel = velocity at center of current face
-            oldpt = currentpt - dt * currentvel
-            newvel = velocity at old location
-            store one component of newvel depending on face type
-    */
-
-//    pthread_t threads[NUM_THREADS];
-//    int rc;
-//    int i;
-//
-//    for( i = 0; i < NUM_THREADS; i++ ) {
-//        cout << "main() : creating thread, " << i << endl;
-//        rc = pthread_create(&threads[i], NULL, PrintHello, (void *)i);
-//
-//        if (rc) {
-//            cout << "Error:unable to create thread," << rc << endl;
-//            exit(-1);
-//        }
-//    }
-//
-//    for( i = 0; i < NUM_THREADS; i++ ) {
-//        pthread_join(threads[i], NULL);
-//    }
-
     std::thread t[3];
-//    for (int i = 0; i < NUM_THREADS; i++) {
-//        t[i] = std::thread(&MACGrid::advectVelocityThread, this, i, dt);
-//    }
-
     t[0] = std::thread(&MACGrid::advectVelocityThreadX, this, 0, dt);
     t[1] = std::thread(&MACGrid::advectVelocityThreadY, this, 1, dt);
     t[2] = std::thread(&MACGrid::advectVelocityThreadZ, this, 2, dt);
@@ -252,22 +193,38 @@ void MACGrid::advectVelocity(double dt) {
         t[i].join();
     }
 
-    //std::cout << "END\n\n";
-
     mU = target.mU;
     mV = target.mV;
     mW = target.mW;
 }
 
-void MACGrid::advectTemperature(double dt) {
-    FOR_EACH_CELL {
+
+
+void MACGrid::advectTemperatureThread(int tid, double dt, int kmin, int kmax) {
+    for(int k = kmin; k < kmax; k++)
+    for(int j = 0; j < theDim[MACGrid::Y]; j++)
+    for(int i = 0; i < theDim[MACGrid::X]; i++) {
         if(isValidCell(i, j, k)) {
             vec3 currentPt = getCenter(i, j, k);
             vec3 oldPt = getRewoundPosition(currentPt, dt);
             double newTemp = getTemperature(oldPt);
             target.mT(i, j, k) = newTemp;
         }
-    };
+    }
+}
+
+void MACGrid::advectTemperature(double dt) {
+
+    std::thread t[4];
+    int knum = theDim[MACGrid::Z] / 4;
+    for (int i = 0; i < 3; i++) {
+        t[i] = std::thread(&MACGrid::advectTemperatureThread, this, i, dt, i * knum, (i+1) * knum);
+    }
+    t[3] = std::thread(&MACGrid::advectTemperatureThread, this, 3, dt, 3 * knum, theDim[MACGrid::Z]);
+
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
+    }
 
     mT = target.mT;
 }
@@ -290,29 +247,59 @@ void MACGrid::advectRenderingParticles(double dt) {
     }
 }
 
+void MACGrid::advectDensityThread(int tid, double dt, int kmin, int kmax) {
+    for(int k = kmin; k < kmax; k++)
+        for(int j = 0; j < theDim[MACGrid::Y]; j++)
+            for(int i = 0; i < theDim[MACGrid::X]; i++) {
+                if(isValidCell(i, j, k)) {
+                    vec3 currentPt = getCenter(i, j, k);
+                    vec3 oldPt = getRewoundPosition(currentPt, dt);
+                    double newDensity = getDensity(oldPt);
+                    target.mD(i, j, k) = newDensity;
+                }
+            }
+}
+
 void MACGrid::advectDensity(double dt) {
-    FOR_EACH_CELL {
-        if(isValidCell(i, j, k)) {
-            vec3 currentPt = getCenter(i, j, k);
-            vec3 oldPt = getRewoundPosition(currentPt, dt);
-            double newDensity = getDensity(oldPt);
-            target.mD(i, j, k) = newDensity;
-        }
-    };
+
+    std::thread t[4];
+    int knum = theDim[MACGrid::Z] / 4;
+    for (int i = 0; i < 3; i++) {
+        t[i] = std::thread(&MACGrid::advectDensityThread, this, i, dt, i * knum, (i+1) * knum);
+    }
+    t[3] = std::thread(&MACGrid::advectDensityThread, this, 3, dt, 3 * knum, theDim[MACGrid::Z]);
+
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
+    }
 
     mD = target.mD;
 }
 
-void MACGrid::computeBouyancy(double dt) {
-    // reference: class slides - slide 9
-    target.mV = mV;
-    FOR_EACH_FACE {
+void MACGrid::computeBouyancyThread(int tid, double dt, int kmin, int kmax) {
+    for(int k = kmin; k < kmax; k++)
+    for(int j = 0; j < theDim[MACGrid::Y]+1; j++)
+    for(int i = 0; i < theDim[MACGrid::X]+1; i++) {
         if(isValidFace(MACGrid::Y, i, j, k)) {
-            vec3 facePos = getFacePosition(MACGrid::Y, i, j, k);
-            double buoyancy = - theBuoyancyAlpha * getDensity(facePos)
-                              + theBuoyancyBeta * (getTemperature(facePos) - theBuoyancyAmbientTemperature);
-            target.mV(i, j, k) += dt * buoyancy;
+         vec3 facePos = getFacePosition(MACGrid::Y, i, j, k);
+         double buoyancy = - theBuoyancyAlpha * getDensity(facePos)
+                           + theBuoyancyBeta * (getTemperature(facePos) - theBuoyancyAmbientTemperature);
+         target.mV(i, j, k) += dt * buoyancy;
         }
+    }
+}
+
+void MACGrid::computeBouyancy(double dt) {
+    target.mV = mV;
+    std::thread t[4];
+    int knum = theDim[MACGrid::Z] / 4;
+    for (int i = 0; i < 3; i++) {
+        t[i] = std::thread(&MACGrid::computeBouyancyThread, this, i, dt, i * knum, (i+1) * knum);
+    }
+    t[3] = std::thread(&MACGrid::computeBouyancyThread, this, 3, dt, 3 * knum, theDim[MACGrid::Z]+1);
+
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
     }
 
     mV = target.mV;
