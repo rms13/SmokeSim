@@ -13,6 +13,11 @@
 
 #include <fstream>
 
+// THREADS
+//#include <cstdlib>
+//#include <pthread.h>
+#define NUM_THREADS 4
+#include <thread>
 
 // Globals
 MACGrid target;
@@ -122,15 +127,15 @@ void MACGrid::updateSources() {
     for (int i = minx; i < maxx; i++) {
         for (int j = miny; j < maxy; j++) {
             for (int k = minz; k < maxz; k++) {
-                mV(i, j, k) = 3.0;
+                mV(i, j, k) = 2.0;
                 mD(i, j, k) = 1.0;
-                mT(i, j, k) = 100.0;
+                mT(i, j, k) = 4.0;
                 // solidCells(i, j, k) = 0.0; // set an empty canvas for solids // done in constructor..
             }
         }
     }
 
-    initializeSolids();
+    // initializeSolids();
 
     // Refresh particles in source.
     for (int i = minx; i < maxx; i++) {
@@ -153,8 +158,8 @@ void MACGrid::updateSources() {
 void MACGrid::initializeSolids() {
 
     // CUBE
-    int minx = 8, miny = 10, minz = 0;
-    int maxx = 12, maxy = 15, maxz = 16;
+    int minx = 2, miny = 10, minz = 0;
+    int maxx = 10, maxy = 15, maxz = 16;
     for (int i = minx; i < maxx; i++) {
         for (int j = miny; j < maxy; j++) {
             for (int k = minz; k < maxz; k++) {
@@ -164,6 +169,47 @@ void MACGrid::initializeSolids() {
     }
 }
 
+void MACGrid::advectVelocityThreadX(int tid, double dt) {
+    //std::cout << "Thread: " << tid << std::endl;
+
+    FOR_EACH_FACE {
+        // X
+        if (isValidFace(MACGrid::X, i, j, k)) {
+            vec3 currentPt = getFacePosition(MACGrid::X, i, j, k);
+            vec3 oldPt = getRewoundPosition(currentPt, dt);
+            vec3 newVel = getVelocity(oldPt);
+            target.mU(i, j, k) = newVel[0];
+        }
+    }
+}
+
+void MACGrid::advectVelocityThreadY(int tid, double dt) {
+    //std::cout << "Thread: " << tid << std::endl;
+
+    FOR_EACH_FACE {
+        // Y
+        if (isValidFace(MACGrid::Y, i, j, k)) {
+            vec3 currentPt = getFacePosition(MACGrid::Y, i, j, k);
+            vec3 oldPt = getRewoundPosition(currentPt, dt);
+            vec3 newVel = getVelocity(oldPt);
+            target.mV(i, j, k) = newVel[1];
+        }
+    }
+}
+
+void MACGrid::advectVelocityThreadZ(int tid, double dt) {
+    //std::cout << "Thread: " << tid << std::endl;
+
+    FOR_EACH_FACE {
+        // Z
+        if (isValidFace(MACGrid::Z, i, j, k)) {
+            vec3 currentPt = getFacePosition(MACGrid::Z, i, j, k);
+            vec3 oldPt = getRewoundPosition(currentPt, dt);
+            vec3 newVel = getVelocity(oldPt);
+            target.mW(i, j, k) = newVel[2];
+        }
+    }
+}
 
 void MACGrid::advectVelocity(double dt) {
     /*
@@ -175,31 +221,38 @@ void MACGrid::advectVelocity(double dt) {
             store one component of newvel depending on face type
     */
 
-    FOR_EACH_FACE {
-        // X
-        if(isValidFace(MACGrid::X, i, j, k)) {
-            vec3 currentPt = getFacePosition(MACGrid::X, i, j, k);
-            vec3 oldPt = getRewoundPosition(currentPt, dt);
-            vec3 newVel = getVelocity(oldPt);
-            target.mU(i, j, k) = newVel[0];
-        }
+//    pthread_t threads[NUM_THREADS];
+//    int rc;
+//    int i;
+//
+//    for( i = 0; i < NUM_THREADS; i++ ) {
+//        cout << "main() : creating thread, " << i << endl;
+//        rc = pthread_create(&threads[i], NULL, PrintHello, (void *)i);
+//
+//        if (rc) {
+//            cout << "Error:unable to create thread," << rc << endl;
+//            exit(-1);
+//        }
+//    }
+//
+//    for( i = 0; i < NUM_THREADS; i++ ) {
+//        pthread_join(threads[i], NULL);
+//    }
 
-        // Y
-        if(isValidFace(MACGrid::Y, i, j, k)) {
-            vec3 currentPt = getFacePosition(MACGrid::Y, i, j, k);
-            vec3 oldPt = getRewoundPosition(currentPt, dt);
-            vec3 newVel = getVelocity(oldPt);
-            target.mV(i, j, k) = newVel[1];
-        }
+    std::thread t[3];
+//    for (int i = 0; i < NUM_THREADS; i++) {
+//        t[i] = std::thread(&MACGrid::advectVelocityThread, this, i, dt);
+//    }
 
-        // Z
-        if(isValidFace(MACGrid::Z, i, j, k)) {
-            vec3 currentPt = getFacePosition(MACGrid::Z, i, j, k);
-            vec3 oldPt = getRewoundPosition(currentPt, dt);
-            vec3 newVel = getVelocity(oldPt);
-            target.mW(i, j, k) = newVel[2];
-        }
+    t[0] = std::thread(&MACGrid::advectVelocityThreadX, this, 0, dt);
+    t[1] = std::thread(&MACGrid::advectVelocityThreadY, this, 1, dt);
+    t[2] = std::thread(&MACGrid::advectVelocityThreadZ, this, 2, dt);
+
+    for (int i = 0; i < 3; i++) {
+        t[i].join();
     }
+
+    //std::cout << "END\n\n";
 
     mU = target.mU;
     mV = target.mV;

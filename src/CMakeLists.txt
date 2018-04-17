@@ -18,3 +18,7 @@ target_link_libraries(SMOKE ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} )
 target_include_directories(SMOKE SYSTEM PUBLIC ${EIGEN3_INCLUDE_DIR})
 target_link_libraries(SMOKE eigen)
 target_link_libraries(SMOKE partio)
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(SMOKE Threads::Threads)

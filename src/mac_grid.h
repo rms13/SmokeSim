@@ -33,6 +33,11 @@ public:
 
 	void initializeSolids();
 
+    void advectVelocityThread(int tid, double dt);
+    void advectVelocityThreadX(int tid, double dt);
+    void advectVelocityThreadY(int tid, double dt);
+    void advectVelocityThreadZ(int tid, double dt);
+
 public:
 
 	// rendering particles
