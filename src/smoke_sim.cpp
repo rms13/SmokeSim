@@ -113,7 +113,7 @@ void SmokeSim::grabScreen()  // Code adapted from asst#1 . USING STB_IMAGE_WRITE
 
 	// Save density field to a .bgeo file
 #if WRITEBGEOS
-	std::string densityFile = "/media/rishabh/UBUNTU 16_0/Smoke/records/temp/DensityFrame" + std::to_string(mFrameNum) + ".bgeo"; //../records/DensityFrame
+	std::string densityFile = "/media/rishabh/SAMSUNG/Smoke/records/temp/DensityFrame" + std::to_string(mFrameNum) + ".bgeo"; //../records/DensityFrame // UBUNTU 16_0 // SAMSUNG
 	mGrid.saveDensity(densityFile);
 #endif
 
@@ -125,13 +125,13 @@ void SmokeSim::grabScreen()  // Code adapted from asst#1 . USING STB_IMAGE_WRITE
 			bitmapData + (recordWidth * 3 * ((recordHeight-1)-i)));
 	}
 	char anim_filename[2048];
-	snprintf(anim_filename, 2048, "/media/rishabh/UBUNTU 16_0/Smoke/records/temp/smoke_%04d.png", mFrameNum); // ../records/smoke_%04d.png
+	snprintf(anim_filename, 2048, "/media/rishabh/SAMSUNG/Smoke/records/temp/smoke_%04d.png", mFrameNum); // ../records/smoke_%04d.png
 	stbi_write_png(anim_filename, recordWidth, recordHeight, 3, bitmapData, recordWidth * 3);
 	delete [] bitmapData;
 
 	// Dump out rendering particle data in .bgeo file
 #if WRITEBGEOS
-	std::string particleFile = "/media/rishabh/UBUNTU 16_0/Smoke/records/temp/frame" + std::to_string(mFrameNum) + ".bgeo"; // ../records/frame
+	std::string particleFile = "/media/rishabh/SAMSUNG/Smoke/records/temp/frame" + std::to_string(mFrameNum) + ".bgeo"; // ../records/frame
 	mGrid.saveParticle(particleFile);
 #endif
 

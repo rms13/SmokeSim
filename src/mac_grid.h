@@ -33,7 +33,7 @@ public:
 
 	void initializeSolids();
 
-    // void advectVelocityThread(int tid, double dt);
+//    void advectVelocityThread(int tid, double dt);
     void advectVelocityThreadX(int tid, double dt);
     void advectVelocityThreadY(int tid, double dt);
     void advectVelocityThreadZ(int tid, double dt);
@@ -46,6 +46,7 @@ public:
 	// rendering particles
 	std::vector<vec3> rendering_particles;
 	std::vector<vec3> rendering_particles_vel;
+	std::vector<int> rendering_particles_colIdx;
 
 	enum RenderMode { CUBES, SHEETS };
 	static RenderMode theRenderMode;

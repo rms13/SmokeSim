@@ -7,7 +7,7 @@
 
 #define LERP(a,b,t) (1-t)*a + t*b
 
-
+extern const int numFrames;
 
 // Don't modify the values of these here.
 // Modify the values of these in Constants.cpp instead.
