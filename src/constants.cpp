@@ -2,7 +2,7 @@
 
 const int theMillisecondsPerFrame = 10;
 
-const int numFrames = 800 + 5;
+const int numFrames = 100;
 
 #ifdef _DEBUG
 const int theDim[3] = {4, 4, 1};

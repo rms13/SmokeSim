@@ -16,7 +16,7 @@
 // THREADS
 #include <thread>
 #define NUM_THREADS 4
-#define MULTITHREADING 1
+#define MULTITHREADING 0
 
 // Globals
 MACGrid target;
@@ -314,6 +314,7 @@ void MACGrid::advectVelocityThreadZ(int tid, double dt) {
 }
 
 void MACGrid::advectVelocity(double dt) {
+#if MULTITHREADING
     std::thread t[3];
     t[0] = std::thread(&MACGrid::advectVelocityThreadX, this, 0, dt);
     t[1] = std::thread(&MACGrid::advectVelocityThreadY, this, 1, dt);
@@ -322,6 +323,34 @@ void MACGrid::advectVelocity(double dt) {
     for (int i = 0; i < 3; i++) {
         t[i].join();
     }
+#else
+    FOR_EACH_FACE {
+        // X
+        if (isValidFace(MACGrid::X, i, j, k)) {
+            vec3 currentPt = getFacePosition(MACGrid::X, i, j, k);
+            vec3 oldPt = getRewoundPosition(currentPt, dt);
+            vec3 newVel = getVelocity(oldPt);
+            target.mU(i, j, k) = newVel[0];
+        }
+        // Y
+        if (isValidFace(MACGrid::Y, i, j, k)) {
+            vec3 currentPt = getFacePosition(MACGrid::Y, i, j, k);
+            vec3 oldPt = getRewoundPosition(currentPt, dt);
+            vec3 newVel = getVelocity(oldPt);
+            target.mV(i, j, k) = newVel[1];
+        }
+        // Z
+        if (isValidFace(MACGrid::Z, i, j, k)) {
+            vec3 currentPt = getFacePosition(MACGrid::Z, i, j, k);
+            vec3 oldPt = getRewoundPosition(currentPt, dt);
+            vec3 newVel = getVelocity(oldPt);
+            target.mW(i, j, k) = newVel[2];
+        }
+    }
+    mU = target.mU;
+    mV = target.mV;
+    mW = target.mW;
+#endif
 }
 
 
@@ -338,6 +367,7 @@ void MACGrid::advectTemperatureThread(int tid, double dt, int kmin, int kmax) {
 }
 
 void MACGrid::advectTemperature(double dt) {
+#if MULTITHREADING
     std::thread t[4];
     int block = theDim[MACGrid::Z] / 4;
     for (int i = 0; i < 4; i++) {
@@ -347,14 +377,19 @@ void MACGrid::advectTemperature(double dt) {
     for (int i = 0; i < 4; i++) {
         t[i].join();
     }
-
+#else
+    FOR_EACH_CELL {
+        vec3 currentPt = getCenter(i, j, k);
+        vec3 oldPt = getRewoundPosition(currentPt, dt);
+        double newTemp = getTemperature(oldPt);
+        target.mT(i, j, k) = newTemp;
+    }
+#endif
     mT = target.mT;
 }
 
-
-void MACGrid::advectRenderingParticles(double dt) {
-    rendering_particles_vel.resize(rendering_particles.size());
-    for (size_t p = 0; p < rendering_particles.size(); p++) {
+void MACGrid::advectRenderingParticlesThread(int tid, double dt, int kmin, int kmax) {
+    for (size_t p = kmin; p < kmax; p++) {
         vec3 currentPosition = rendering_particles[p];
         vec3 currentVelocity = getVelocity(currentPosition);
         vec3 nextPosition = currentPosition + currentVelocity * dt;
@@ -369,6 +404,35 @@ void MACGrid::advectRenderingParticles(double dt) {
     }
 }
 
+void MACGrid::advectRenderingParticles(double dt) {
+    rendering_particles_vel.resize(rendering_particles.size());
+#if MULTITHREADING
+    std::thread t[4];
+    int block = rendering_particles.size() / 4;
+    for (int i = 0; i < 4; i++) {
+        t[i] = std::thread(&MACGrid::advectRenderingParticlesThread, this, i, dt, i * block, (i+1) * block);
+    }
+
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
+    }
+#else
+    for (size_t p = 0; p < rendering_particles.size(); p++) {
+        vec3 currentPosition = rendering_particles[p];
+        vec3 currentVelocity = getVelocity(currentPosition);
+        vec3 nextPosition = currentPosition + currentVelocity * dt;
+        vec3 clippedNextPosition = clipToGrid(nextPosition, currentPosition);
+        // Keep going...
+        vec3 nextVelocity = getVelocity(clippedNextPosition);
+        vec3 averageVelocity = (currentVelocity + nextVelocity) / 2.0;
+        vec3 betterNextPosition = currentPosition + averageVelocity * dt;
+        vec3 clippedBetterNextPosition = clipToGrid(betterNextPosition, currentPosition);
+        rendering_particles[p] = clippedBetterNextPosition;
+        rendering_particles_vel[p] = averageVelocity;
+    }
+#endif
+}
+
 void MACGrid::advectDensityThread(int tid, double dt, int kmin, int kmax) {
     for(int k = kmin; k < kmax; k++)
     for(int j = 0; j < theDim[MACGrid::Y]; j++)
@@ -381,6 +445,7 @@ void MACGrid::advectDensityThread(int tid, double dt, int kmin, int kmax) {
 }
 
 void MACGrid::advectDensity(double dt) {
+#if MULTITHREADING
     std::thread t[4];
     int block = theDim[MACGrid::Z] / 4;
     for (int i = 0; i < 4; i++) {
@@ -390,7 +455,14 @@ void MACGrid::advectDensity(double dt) {
     for (int i = 0; i < 4; i++) {
         t[i].join();
     }
-
+#else
+    FOR_EACH_CELL {
+        vec3 currentPt = getCenter(i, j, k);
+        vec3 oldPt = getRewoundPosition(currentPt, dt);
+        double newDensity = getDensity(oldPt);
+        target.mD(i, j, k) = newDensity;
+    }
+#endif
     mD = target.mD;
 }
 
@@ -399,16 +471,17 @@ void MACGrid::computeBouyancyThread(int tid, double dt, int kmin, int kmax) {
     for(int j = 0; j < theDim[MACGrid::Y]+1; j++)
     for(int i = 0; i < theDim[MACGrid::X]+1; i++) {
         if(isValidFace(MACGrid::Y, i, j, k)) {
-         vec3 facePos = getFacePosition(MACGrid::Y, i, j, k);
-         double buoyancy = - theBuoyancyAlpha * getDensity(facePos)
+            vec3 facePos = getFacePosition(MACGrid::Y, i, j, k);
+            double buoyancy = - theBuoyancyAlpha * getDensity(facePos)
                            + theBuoyancyBeta * (getTemperature(facePos) - theBuoyancyAmbientTemperature);
-         target.mV(i, j, k) += dt * buoyancy;
+            target.mV(i, j, k) += dt * buoyancy;
         }
     }
 }
 
 void MACGrid::computeBuoyancy(double dt) {
     target.mV = mV;
+#if MULTITHREADING
     std::thread t[4];
     int block = theDim[MACGrid::Z] / 4;
     for (int i = 0; i < 3; i++) {
@@ -421,7 +494,16 @@ void MACGrid::computeBuoyancy(double dt) {
     for (int i = 0; i < 4; i++) {
         t[i].join();
     }
-
+#else
+    FOR_EACH_FACE{
+        if(isValidFace(MACGrid::Y, i, j, k)) {
+            vec3 facePos = getFacePosition(MACGrid::Y, i, j, k);
+            double buoyancy = - theBuoyancyAlpha * getDensity(facePos)
+                              + theBuoyancyBeta * (getTemperature(facePos) - theBuoyancyAmbientTemperature);
+            target.mV(i, j, k) += dt * buoyancy;
+        }
+    }
+#endif
     mV = target.mV;
 }
 
@@ -560,7 +642,7 @@ void MACGrid::computeVorticityConfinement(double dt) {
         t[i].join();
     }
 #else
-    double inv2h = 1.0 / (2.0 * theCellSize);
+    //double inv2h = 1.0 / (2.0 * theCellSize);
     FOR_EACH_CELL {
         // eq 5.7
         vec3 vortGrad(vorticityLen(i+1, j, k) - vorticityLen(i-1, j, k),
@@ -1152,14 +1234,41 @@ bool MACGrid::preconditionedConjugateGradient(const GridDataMatrix &A, GridData 
 
 }
 
+void MACGrid::calculatePreconditionerThread(int tid, GridDataMatrix *A, int kmin, int kmax) {
+    double tuning = 0.97;
+    for(int k = kmin; k < kmax; k++)
+    for(int j = 0; j < theDim[MACGrid::Y]; j++)
+    for(int i = 0; i < theDim[MACGrid::X]; i++) {
+        double a = A->plusI(i - 1, j, k) * precon(i - 1, j, k);
+        double b = A->plusJ(i, j - 1, k) * precon(i, j - 1, k);
+        double c = A->plusK(i, j, k - 1) * precon(i, j, k - 1);
+        double e = A->diag(i, j, k) - a * a - b * b - c * c
+                   - tuning * (a * precon(i - 1, j, k) * (A->plusJ(i - 1, j, k) + A->plusK(i - 1, j, k))
+                               + b * precon(i, j - 1, k) * (A->plusI(i, j - 1, k) + A->plusK(i, j - 1, k))
+                               + c * precon(i, j, k - 1) * (A->plusI(i, j, k - 1) + A->plusJ(i, j, k - 1)));
 
-void MACGrid::calculatePreconditioner(const GridDataMatrix &A) {
+        precon(i, j, k) = 1.0 / sqrt(e + EPSILON);
+    }
+}
+
+void MACGrid::calculatePreconditioner(GridDataMatrix &A) {
 
     precon.initialize();
 
     // TODO: Build the modified incomplete Cholesky preconditioner following Fig 4.2 on page 36 of Bridson's 2007 SIGGRAPH fluid course notes.
     //       This corresponds to filling in precon(i,j,k) for all cells
 
+#if 0
+    std::thread t[4];
+    int block = theDim[MACGrid::Z] / 4;
+    for (int i = 0; i < 4; i++) {
+        t[i] = std::thread(&MACGrid::calculatePreconditionerThread, this, i, &A, i * block, (i+1) * block);
+    }
+
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
+    }
+#else
     double tuning = 0.97;
     FOR_EACH_CELL {
         double a = A.plusI(i - 1, j, k) * precon(i - 1, j, k);
@@ -1172,6 +1281,7 @@ void MACGrid::calculatePreconditioner(const GridDataMatrix &A) {
 
         precon(i, j, k) = 1.0 / sqrt(e + EPSILON);
     }
+#endif
 }
 
 

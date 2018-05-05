@@ -8,6 +8,8 @@
 #include "basic_math.h"
 #include <string.h>
 
+#include <chrono>
+
 // Geometry and whatnot
 SmokeSim theSmokeSim;
 Camera theCamera;
@@ -19,6 +21,9 @@ int theMenu = 0;
 int theButtonState = 0;
 int theModifierState = 0;
 bool isRunning = true;
+
+int64_t startTime, endTime, totTime = 0;
+bool firstStep = true;
 
 
 int savedWidth = 0;
@@ -125,7 +130,16 @@ void onKeyboardSpecialCb(int key, int x, int y)
 
 void onTimerCb(int value)
 {
-    if (isRunning) theSmokeSim.step();
+//    if (firstStep) {
+//        startTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+//        firstStep = false;
+//    }
+    if (isRunning) {
+        startTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        theSmokeSim.step();
+        endTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+        totTime += (endTime - startTime);
+    }
     glutTimerFunc(theMillisecondsPerFrame, onTimerCb, 0);
     glutPostRedisplay();
 }
@@ -166,7 +180,14 @@ void drawOverlay()
             theFpsTracker.fpsAverage(), theSmokeSim.getTotalFrames(),
             theSmokeSim.isRecording()? "Recording..." : "");
 
-    if (theSmokeSim.getTotalFrames() >= numFrames) exit(0); // EXIT UPON RENDERING THE REQUIRED NUMBER OF FRAMES.
+    // EXIT UPON RENDERING THE REQUIRED NUMBER OF FRAMES.
+    if (theSmokeSim.getTotalFrames() >= numFrames)
+    {
+        //int64_t totTime = endTime - startTime;
+        cout << "Time(ms): " << totTime << endl;
+        cout << "Avg Time(ms): " << totTime / numFrames << endl;
+        exit(0);
+    }
 
     for (unsigned int i = 0; i < strlen(info); i++)
     {

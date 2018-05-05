@@ -58,9 +58,14 @@ public:
     void projectThread_UpdateY(int tid, double dt, GridData *p);
     void projectThread_UpdateZ(int tid, double dt, GridData *p);
 
+    // MULTITHREADING: calculatePreconditionerThread
+    void calculatePreconditionerThread(int tid, GridDataMatrix *A, int kmin, int kmax);
+
+    // MULTITHREADING: advectRenderingParticles
+    void advectRenderingParticlesThread(int tid, double dt, int kmin, int kmax);
+
     // source styling
     //void updateSources_3interacting();
-
 
 public:
 
@@ -120,7 +125,7 @@ protected:
 	vec3 getFacePosition(int dimension, int i, int j, int k);
 	void calculateAMatrix();
 	bool preconditionedConjugateGradient(const GridDataMatrix & A, GridData & p, const GridData & d, int maxIterations, double tolerance);
-	void calculatePreconditioner(const GridDataMatrix & A);
+	void calculatePreconditioner(GridDataMatrix & A);
 	void applyPreconditioner(const GridData & r, const GridDataMatrix & A, GridData & z);
 	double dotProduct(const GridData & vector1, const GridData & vector2);
 	void add(const GridData & vector1, const GridData & vector2, GridData & result);
