@@ -14,10 +14,9 @@
 #include <fstream>
 
 // THREADS
-//#include <cstdlib>
-//#include <pthread.h>
-#define NUM_THREADS 4
 #include <thread>
+#define NUM_THREADS 4
+#define MULTITHREADING 1
 
 // Globals
 MACGrid target;
@@ -93,7 +92,7 @@ void MACGrid::initialize() {
 
 void MACGrid::updateSources() {
     // Set initial values for density, temperature, velocity
-    int mul = 2;
+    int mul = 1;
 
     int minx = 3*mul, miny = 1*mul, minz = 3*mul;
     int maxx = 4*mul, maxy = 2*mul, maxz = 4*mul;
@@ -130,7 +129,7 @@ void MACGrid::updateSources() {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if 1
+#if 0
     // Set initial values for density, temperature, velocity
     minx = 0*mul, miny = 1*mul, minz = 0*mul;
     maxx = 1*mul, maxy = 2*mul, maxz = 1*mul;
@@ -167,7 +166,7 @@ void MACGrid::updateSources() {
 #endif
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if 1
+#if 0
     // Set initial values for density, temperature, velocity
     minx = 6*mul, miny = 1*mul, minz = 6*mul;
     maxx = 7*mul, maxy = 2*mul, maxz = 7*mul;
@@ -281,6 +280,7 @@ void MACGrid::advectVelocityThreadX(int tid, double dt) {
             target.mU(i, j, k) = newVel[0];
         }
     }
+    mU = target.mU;
 }
 
 void MACGrid::advectVelocityThreadY(int tid, double dt) {
@@ -295,6 +295,7 @@ void MACGrid::advectVelocityThreadY(int tid, double dt) {
             target.mV(i, j, k) = newVel[1];
         }
     }
+    mV = target.mV;
 }
 
 void MACGrid::advectVelocityThreadZ(int tid, double dt) {
@@ -309,6 +310,7 @@ void MACGrid::advectVelocityThreadZ(int tid, double dt) {
             target.mW(i, j, k) = newVel[2];
         }
     }
+    mW = target.mW;
 }
 
 void MACGrid::advectVelocity(double dt) {
@@ -320,10 +322,6 @@ void MACGrid::advectVelocity(double dt) {
     for (int i = 0; i < 3; i++) {
         t[i].join();
     }
-
-    mU = target.mU;
-    mV = target.mV;
-    mW = target.mW;
 }
 
 
@@ -340,13 +338,11 @@ void MACGrid::advectTemperatureThread(int tid, double dt, int kmin, int kmax) {
 }
 
 void MACGrid::advectTemperature(double dt) {
-
     std::thread t[4];
-    int knum = theDim[MACGrid::Z] / 4;
-    for (int i = 0; i < 3; i++) {
-        t[i] = std::thread(&MACGrid::advectTemperatureThread, this, i, dt, i * knum, (i+1) * knum);
+    int block = theDim[MACGrid::Z] / 4;
+    for (int i = 0; i < 4; i++) {
+        t[i] = std::thread(&MACGrid::advectTemperatureThread, this, i, dt, i * block , (i+1) * block);
     }
-    t[3] = std::thread(&MACGrid::advectTemperatureThread, this, 3, dt, 3 * knum, theDim[MACGrid::Z]);
 
     for (int i = 0; i < 4; i++) {
         t[i].join();
@@ -375,22 +371,21 @@ void MACGrid::advectRenderingParticles(double dt) {
 
 void MACGrid::advectDensityThread(int tid, double dt, int kmin, int kmax) {
     for(int k = kmin; k < kmax; k++)
-        for(int j = 0; j < theDim[MACGrid::Y]; j++)
-            for(int i = 0; i < theDim[MACGrid::X]; i++) {
-                vec3 currentPt = getCenter(i, j, k);
-                vec3 oldPt = getRewoundPosition(currentPt, dt);
-                double newDensity = getDensity(oldPt);
-                target.mD(i, j, k) = newDensity;
-            }
+    for(int j = 0; j < theDim[MACGrid::Y]; j++)
+    for(int i = 0; i < theDim[MACGrid::X]; i++) {
+        vec3 currentPt = getCenter(i, j, k);
+        vec3 oldPt = getRewoundPosition(currentPt, dt);
+        double newDensity = getDensity(oldPt);
+        target.mD(i, j, k) = newDensity;
+    }
 }
 
 void MACGrid::advectDensity(double dt) {
     std::thread t[4];
-    int knum = theDim[MACGrid::Z] / 4;
-    for (int i = 0; i < 3; i++) {
-        t[i] = std::thread(&MACGrid::advectDensityThread, this, i, dt, i * knum, (i+1) * knum);
+    int block = theDim[MACGrid::Z] / 4;
+    for (int i = 0; i < 4; i++) {
+        t[i] = std::thread(&MACGrid::advectDensityThread, this, i, dt, i * block, (i+1) * block);
     }
-    t[3] = std::thread(&MACGrid::advectDensityThread, this, 3, dt, 3 * knum, theDim[MACGrid::Z]);
 
     for (int i = 0; i < 4; i++) {
         t[i].join();
@@ -412,20 +407,93 @@ void MACGrid::computeBouyancyThread(int tid, double dt, int kmin, int kmax) {
     }
 }
 
-void MACGrid::computeBouyancy(double dt) {
+void MACGrid::computeBuoyancy(double dt) {
     target.mV = mV;
     std::thread t[4];
-    int knum = theDim[MACGrid::Z] / 4;
+    int block = theDim[MACGrid::Z] / 4;
     for (int i = 0; i < 3; i++) {
-        t[i] = std::thread(&MACGrid::computeBouyancyThread, this, i, dt, i * knum, (i+1) * knum);
+        t[i] = std::thread(&MACGrid::computeBouyancyThread, this, i, dt,
+                           i * block, (i+1) * block);
     }
-    t[3] = std::thread(&MACGrid::computeBouyancyThread, this, 3, dt, 3 * knum, theDim[MACGrid::Z]+1);
+    t[3] = std::thread(&MACGrid::computeBouyancyThread, this, 3, dt,
+                       3 * block, (3+1) * block + 1);
 
     for (int i = 0; i < 4; i++) {
         t[i].join();
     }
 
     mV = target.mV;
+}
+
+void MACGrid::computeVorticityConfinementThread_CellCenterVel(int tid, double dt, int kmin, int kmax,
+                                                              GridData *u, GridData *v, GridData *w) {
+    for(int k = kmin; k < kmax; k++)
+    for(int j = 0; j < theDim[MACGrid::Y]; j++)
+    for(int i = 0; i < theDim[MACGrid::X]; i++) {
+        (*u)(i, j, k) = (mU(i + 1, j, k) + mU(i, j, k)) / 2;
+        (*v)(i, j, k) = (mV(i, j + 1, k) + mV(i, j, k)) / 2;
+        (*w)(i, j, k) = (mW(i, j, k + 1) + mW(i, j, k)) / 2;
+    }
+}
+
+void MACGrid::computeVorticityConfinementThread_CellCenterVort(int tid, double dt, int kmin, int kmax,
+                                                               GridData *u, GridData *v, GridData *w,
+                                                               GridData *x, GridData *y, GridData *z, GridData *len) {
+    double inv2h = 1.0 / (2.0 * theCellSize);
+
+    for(int k = kmin; k < kmax; k++)
+    for(int j = 0; j < theDim[MACGrid::Y]; j++)
+    for(int i = 0; i < theDim[MACGrid::X]; i++) {
+        (*x)(i, j, k) = inv2h * ((*w)(i, j + 1, k) - (*w)(i, j - 1, k) - (*v)(i, j, k + 1) + (*v)(i, j, k - 1));
+        (*y)(i, j, k) = inv2h * ((*u)(i, j, k + 1) - (*u)(i, j, k - 1) - (*w)(i + 1, j, k) + (*w)(i - 1, j, k));
+        (*z)(i, j, k) = inv2h * ((*v)(i + 1, j, k) - (*v)(i - 1, j, k) - (*u)(i, j + 1, k) + (*u)(i, j - 1, k));
+        (*len)(i, j, k) = vec3((*x)(i, j, k), (*y)(i, j, k), (*z)(i, j, k)).Length();
+    }
+}
+
+void MACGrid::computeVorticityConfinementThread_Update(int tid, double dt, int kmin, int kmax,
+                                              GridData *x, GridData *y, GridData *z, GridData *len) {
+    double inv2h = 1.0 / (2.0 * theCellSize);
+
+    for(int k = kmin; k < kmax; k++)
+    for(int j = 0; j < theDim[MACGrid::Y]; j++)
+    for(int i = 0; i < theDim[MACGrid::X]; i++) {
+        vec3 vortGrad((*len)(i+1, j, k) - (*len)(i-1, j, k),
+                      (*len)(i, j+1, k) - (*len)(i, j-1, k),
+                      (*len)(i, j, k+1) - (*len)(i, j, k-1));
+        vortGrad *= inv2h;
+
+        vec3 N = vortGrad.Normalize();
+
+        vec3 fconf = theVorticityEpsilon * theCellSize *
+                     N.Cross(vec3((*x)(i, j, k), (*y)(i, j, k), (*z)(i, j, k)));
+
+        // Apply vortcity confinement to faces..
+        // X
+        if(isValidFace(MACGrid::X, i, j, k)) {
+            target.mU(i, j, k) += dt * fconf[0]/2;
+        }
+        // Y
+        if(isValidFace(MACGrid::Y, i, j, k)) {
+            target.mV(i, j, k) += dt * fconf[1]/2;
+        }
+        // Z
+        if(isValidFace(MACGrid::Z, i, j, k)) {
+            target.mW(i, j, k) += dt * fconf[2]/2;
+        }
+        // X+1
+        if(isValidFace(MACGrid::X, i+1, j, k)) {
+            target.mU(i+1, j, k) += dt * fconf[0]/2;
+        }
+        // Y+1
+        if(isValidFace(MACGrid::Y, i, j+1, k)) {
+            target.mV(i, j+1, k) += dt * fconf[1]/2;
+        }
+        // Z+1
+        if(isValidFace(MACGrid::Z, i, j, k+1)) {
+            target.mW(i, j, k+1) += dt * fconf[2]/2;
+        }
+    }
 }
 
 void MACGrid::computeVorticityConfinement(double dt) {
@@ -439,13 +507,35 @@ void MACGrid::computeVorticityConfinement(double dt) {
     GridData vorticityLen; vorticityLen.initialize();
 
     // Compute the vel at cell centers
+#if MULTITHREADING
+    std::thread t[4];
+    int block = theDim[MACGrid::Z] / 4;
+    for (int i = 0; i < 4; i++) {
+        t[i] = std::thread(&MACGrid::computeVorticityConfinementThread_CellCenterVel,
+                           this, i, dt, i * block, (i+1) * block, &u, &v, &w);
+    }
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
+    }
+#else
     FOR_EACH_CELL {
         u(i, j, k) = (mU(i + 1, j, k) + mU(i, j, k)) / 2;
         v(i, j, k) = (mV(i, j + 1, k) + mV(i, j, k)) / 2;
         w(i, j, k) = (mW(i, j, k + 1) + mW(i, j, k)) / 2;
     }
+#endif
 
     // Compute the vorticity at cell centers.. eq 5.6
+#if MULTITHREADING
+    for (int i = 0; i < 4; i++) {
+        t[i] = std::thread(&MACGrid::computeVorticityConfinementThread_CellCenterVort,
+                           this, i, dt, i * block, (i+1) * block, &u, &v, &w,
+                           &vorticityX, &vorticityY, &vorticityZ, &vorticityLen);
+    }
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
+    }
+#else
     double inv2h = 1.0 / (2.0 * theCellSize);
     FOR_EACH_CELL {
         vorticityX(i, j, k) = inv2h * (w(i, j + 1, k) - w(i, j - 1, k) - v(i, j, k + 1) + v(i, j, k - 1));
@@ -453,12 +543,24 @@ void MACGrid::computeVorticityConfinement(double dt) {
         vorticityZ(i, j, k) = inv2h * (v(i + 1, j, k) - v(i - 1, j, k) - u(i, j + 1, k) + u(i, j - 1, k));
         vorticityLen(i, j, k) = vec3(vorticityX(i, j, k), vorticityY(i, j, k), vorticityZ(i, j, k)).Length();
     }
+#endif
 
     // Compute the vorticity at faces and add to vels
     target.mU = mU;
     target.mV = mV;
     target.mW = mW;
 
+#if MULTITHREADING
+    for (int i = 0; i < 4; i++) {
+        t[i] = std::thread(&MACGrid::computeVorticityConfinementThread_Update,
+                           this, i, dt, i * block, (i+1) * block,
+                           &vorticityX, &vorticityY, &vorticityZ, &vorticityLen);
+    }
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
+    }
+#else
+    double inv2h = 1.0 / (2.0 * theCellSize);
     FOR_EACH_CELL {
         // eq 5.7
         vec3 vortGrad(vorticityLen(i+1, j, k) - vorticityLen(i-1, j, k),
@@ -497,6 +599,7 @@ void MACGrid::computeVorticityConfinement(double dt) {
             target.mW(i, j, k+1) += dt * fconf[2]/2;
         }
     }
+#endif
 
     mU = target.mU;
     mV = target.mV;
@@ -504,43 +607,131 @@ void MACGrid::computeVorticityConfinement(double dt) {
 }
 
 void MACGrid::addExternalForces(double dt) {
-    computeBouyancy(dt);
+    computeBuoyancy(dt);
     computeVorticityConfinement(dt);
+}
+
+
+void MACGrid::projectThread_Divergence(int tid, double dt, int kmin, int kmax,
+                              GridData *d) {
+    for(int k = kmin; k < kmax; k++)
+    for(int j = 0; j < theDim[MACGrid::Y]; j++)
+    for(int i = 0; i < theDim[MACGrid::X]; i++) {
+        double velLowX = (i > 0) ? mU(i, j, k) : 0.0;
+        double velHighX = (i + 1 < theDim[MACGrid::X]) ? mU(i + 1, j, k) : 0.0;
+        double velLowY = (j > 0) ? mV(i, j, k) : 0.0;
+        double velHighY = (j + 1 < theDim[MACGrid::Y]) ? mV(i, j + 1, k) : 0.0;
+        double velLowZ = (k > 0) ? mW(i, j, k) : 0.0;
+        double velHighZ = (k + 1 < theDim[MACGrid::Z]) ? mW(i, j, k + 1) : 0.0;
+        (*d)(i, j, k) = -((velHighX - velLowX) + (velHighY - velLowY) + (velHighZ - velLowZ)) / theCellSize;
+    }
+}
+
+void MACGrid::projectThread_UpdateX(int tid, double dt, GridData *p){
+    target.mU = mU;
+    double constMultiplier1 = dt / (theAirDensity * theCellSize);
+    FOR_EACH_FACE {
+        // X
+        if (isValidFace(MACGrid::X, i, j, k)) {
+            if (isValidCell(i - 1, j, k) && isValidCell(i, j, k)) {
+                double deltaPX = (*p)(i, j, k) - (*p)(i - 1, j, k);
+                target.mU(i, j, k) -= constMultiplier1 * deltaPX;
+            }
+            else{
+                target.mU(i, j, k) = 0.0;
+            }
+        }
+    }
+    mU = target.mU;
+}
+
+void MACGrid::projectThread_UpdateY(int tid, double dt, GridData *p){
+    target.mV = mV;
+    double constMultiplier1 = dt / (theAirDensity * theCellSize);
+    FOR_EACH_FACE {
+        // Y
+        if(isValidFace(MACGrid::Y, i, j, k)) {
+            if (isValidCell(i, j - 1, k) && isValidCell(i, j, k)) {
+                double deltaPY = (*p)(i, j, k) - (*p)(i, j - 1, k);
+                target.mV(i, j, k) -= constMultiplier1 * deltaPY;
+            }
+            else{
+                target.mV(i, j, k) = 0.0;
+            }
+        }
+    }
+
+    mV = target.mV;
+}
+
+void MACGrid::projectThread_UpdateZ(int tid, double dt, GridData *p){
+    target.mW = mW;
+    double constMultiplier1 = dt / (theAirDensity * theCellSize);
+    FOR_EACH_FACE {
+        // Z
+        if(isValidFace(MACGrid::Z, i, j, k)) {
+            if (isValidCell(i, j, k - 1) && isValidCell(i, j, k)) {
+                double deltaPZ = (*p)(i, j, k) - (*p)(i, j, k - 1);
+                target.mW(i, j, k) -= constMultiplier1 * deltaPZ;
+            }
+            else{
+                target.mW(i, j, k) = 0.0;
+            }
+        }
+    }
+
+    mW = target.mW;
 }
 
 void MACGrid::project(double dt) {
     // AP = D
 
-    double density = 1.0; // ???
     double constMultiplier = theAirDensity * theCellSize * theCellSize / dt; // sig notes: page 31..
 
     GridData p = GridData(); p.initialize();
     GridData d = GridData(); d.initialize();
 
     // Compute divergence d1
-    FOR_EACH_CELL {
-        if(isValidCell(i, j, k)) {
-            double velLowX = (i > 0) ? mU(i, j, k) : 0.0;
-            double velHighX = (i + 1 < theDim[MACGrid::X]) ? mU(i + 1, j, k) : 0.0;
-            double velLowY = (j > 0) ? mV(i, j, k) : 0.0;
-            double velHighY = (j + 1 < theDim[MACGrid::Y]) ? mV(i, j + 1, k) : 0.0;
-            double velLowZ = (k > 0) ? mW(i, j, k) : 0.0;
-            double velHighZ = (k + 1 < theDim[MACGrid::Z]) ? mW(i, j, k + 1) : 0.0;
-            d(i, j, k) = - ((velHighX - velLowX) + (velHighY - velLowY) + (velHighZ - velLowZ)) / theCellSize;
-        }
+#if MULTITHREADING
+    std::thread t[4];
+    int block = theDim[MACGrid::Z] / 4;
+    for (int i = 0; i < 4; i++) {
+        t[i] = std::thread(&MACGrid::projectThread_Divergence,
+                           this, i, dt, i * block, (i+1) * block, &d);
     }
+    for (int i = 0; i < 4; i++) {
+        t[i].join();
+    }
+#else
+    FOR_EACH_CELL {
+        double velLowX = (i > 0) ? mU(i, j, k) : 0.0;
+        double velHighX = (i + 1 < theDim[MACGrid::X]) ? mU(i + 1, j, k) : 0.0;
+        double velLowY = (j > 0) ? mV(i, j, k) : 0.0;
+        double velHighY = (j + 1 < theDim[MACGrid::Y]) ? mV(i, j + 1, k) : 0.0;
+        double velLowZ = (k > 0) ? mW(i, j, k) : 0.0;
+        double velHighZ = (k + 1 < theDim[MACGrid::Z]) ? mW(i, j, k + 1) : 0.0;
+        d(i, j, k) = -((velHighX - velLowX) + (velHighY - velLowY) + (velHighZ - velLowZ)) / theCellSize;
+    }
+#endif
 
     // Compute pressure p
     preconditionedConjugateGradient(AMatrix, p, d, 200, 0.01);
-
     FOR_EACH_CELL {
         p(i, j, k) *= constMultiplier;
     }
-
     target.mP = mP;
 
-
     // Update velocities using p.. refer class notes for equations
+#if MULTITHREADING
+    t[0] = std::thread(&MACGrid::projectThread_UpdateX, this, 0, dt, &p);
+    t[1] = std::thread(&MACGrid::projectThread_UpdateY, this, 1, dt, &p);
+    t[2] = std::thread(&MACGrid::projectThread_UpdateZ, this, 2, dt, &p);
+
+    for (int i = 0; i < 3; i++) {
+        t[i].join();
+    }
+
+#else
     target.mU = mU;
     target.mV = mV;
     target.mW = mW;
@@ -580,6 +771,11 @@ void MACGrid::project(double dt) {
         }
     }
 
+    mU = target.mU;
+    mV = target.mV;
+    mW = target.mW;
+
+#endif
 
 #ifdef _DEBUG
     // Check border velocities:
@@ -640,9 +836,7 @@ void MACGrid::project(double dt) {
 
     // Then save the result to our object
     mP = target.mP;
-    mU = target.mU;
-    mV = target.mV;
-    mW = target.mW;
+
 
 #ifdef _DEBUG
     // IMPLEMENT THIS AS A SANITY CHECK: assert (checkDivergence());

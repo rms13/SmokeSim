@@ -33,16 +33,33 @@ public:
 
 	void initializeSolids();
 
-//    void advectVelocityThread(int tid, double dt);
+    // MULTITHREADING: VELOCITY
     void advectVelocityThreadX(int tid, double dt);
     void advectVelocityThreadY(int tid, double dt);
     void advectVelocityThreadZ(int tid, double dt);
+    // MULTITHREADING: TEMPERATURE
     void advectTemperatureThread(int tid, double dt, int kmin, int kmax);
+    // MULTITHREADING: DENSITY
     void advectDensityThread(int tid, double dt, int kmin, int kmax);
+    // MULTITHREADING: BUOYANCY
     void computeBouyancyThread(int tid, double dt, int kmin, int kmax);
+    // MULTITHREADING: VORTICITY
+    void computeVorticityConfinementThread_CellCenterVel(int tid, double dt, int kmin, int kmax,
+                                                         GridData *u, GridData *v, GridData *w);
+    void computeVorticityConfinementThread_CellCenterVort(int tid, double dt, int kmin, int kmax,
+                                                          GridData *u, GridData *v, GridData *w,
+                                                          GridData *x, GridData *y, GridData *z, GridData *len);
+    void computeVorticityConfinementThread_Update(int tid, double dt, int kmin, int kmax,
+                                                  GridData *x, GridData *y, GridData *z, GridData *len);
+    // MULTITHREADING: PROJECTION
+    void projectThread_Divergence(int tid, double dt, int kmin, int kmax,
+                                  GridData *d);
+    void projectThread_UpdateX(int tid, double dt, GridData *p);
+    void projectThread_UpdateY(int tid, double dt, GridData *p);
+    void projectThread_UpdateZ(int tid, double dt, GridData *p);
 
     // source styling
-    void updateSources_3interacting();
+    //void updateSources_3interacting();
 
 
 public:
@@ -66,7 +83,7 @@ protected:
 	void initialize();
 
 	// Simulation
-	void computeBouyancy(double dt);
+	void computeBuoyancy(double dt);
 	void computeVorticityConfinement(double dt);
 
 	// Rendering
