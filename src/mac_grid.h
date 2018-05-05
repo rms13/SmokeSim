@@ -41,6 +41,10 @@ public:
     void advectDensityThread(int tid, double dt, int kmin, int kmax);
     void computeBouyancyThread(int tid, double dt, int kmin, int kmax);
 
+    // source styling
+    void updateSources_3interacting();
+
+
 public:
 
 	// rendering particles

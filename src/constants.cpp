@@ -2,12 +2,12 @@
 
 const int theMillisecondsPerFrame = 10;
 
-const int numFrames = 5000 + 5;
+const int numFrames = 800 + 5;
 
 #ifdef _DEBUG
 const int theDim[3] = {4, 4, 1};
 #else
-const int theDim[3] = {8, 32, 8};
+const int theDim[3] = {128, 128, 1};
 #endif
 
 const double theCellSize = 0.5;
