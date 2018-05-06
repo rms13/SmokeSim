@@ -15,8 +15,8 @@
 
 // THREADS
 #include <thread>
-#define NUM_THREADS 4
-#define MULTITHREADING 0
+
+#define MULTITHREADING 0 // USE ONLY IF theDim[MACGrid::Z]>=4
 
 // Globals
 MACGrid target;
@@ -93,22 +93,22 @@ void MACGrid::initialize() {
 void MACGrid::updateSources() {
     // Set initial values for density, temperature, velocity
     int mul = 1;
-
-    int minx = 3*mul, miny = 1*mul, minz = 3*mul;
-    int maxx = 4*mul, maxy = 2*mul, maxz = 4*mul;
+    int minx = 0*mul, miny = 0*mul, minz = 0*mul;
+    int maxx = 3*mul, maxy = 3*mul, maxz = 0*mul;
 
     for (int i = minx; i <= maxx; i++) {
         for (int j = miny; j <= maxy; j++) {
             for (int k = minz; k <= maxz; k++) {
-                mV(i, j, k) = 4.0;
-                mD(i, j, k) = 1.0;
-                mT(i, j, k) = 1.0;
+                mV(i, j, k) = 3.0;
+                //mU(i, j, k) = 2.0;
+                mD(i, j, k) = 0.8;
+                mT(i, j, k) = 3.0;
             }
         }
     }
     currentStep++;
 
-    //initializeSolids();
+    initializeSolids();
 
     // Refresh particles in source.
     for (int i = minx; i <= maxx; i++) {
@@ -129,19 +129,18 @@ void MACGrid::updateSources() {
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if 0
+#if 0 // TURN ON OR OFF FOR MULTIPLE SOURCES
     // Set initial values for density, temperature, velocity
-    minx = 0*mul, miny = 1*mul, minz = 0*mul;
-    maxx = 1*mul, maxy = 2*mul, maxz = 1*mul;
+    minx = 29*mul, miny = 0*mul, minz = 0*mul;
+    maxx = 34*mul, maxy = 5*mul, maxz = 0*mul;
 
     for (int i = minx; i <= maxx; i++) {
         for (int j = miny; j <= maxy; j++) {
             for (int k = minz; k <= maxz; k++) {
-                mU(i, j, k) = 2.0;
                 mV(i, j, k) = 2.0;
-                mW(i, j, k) = 1.0;
-                mD(i, j, k) = 1.0;
-                mT(i, j, k) = 1.0;
+                mU(i, j, k) = 2.0;
+                mD(i, j, k) = 0.9;
+                mT(i, j, k) = 2.0;
             }
         }
     }
@@ -168,8 +167,8 @@ void MACGrid::updateSources() {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #if 0
     // Set initial values for density, temperature, velocity
-    minx = 6*mul, miny = 1*mul, minz = 6*mul;
-    maxx = 7*mul, maxy = 2*mul, maxz = 7*mul;
+    minx = 6*mul, miny = 0*mul, minz = 6*mul;
+    maxx = 7*mul, maxy = 1*mul, maxz = 7*mul;
 
     for (int i = minx; i <= maxx; i++) {
         for (int j = miny; j <= maxy; j++) {
@@ -207,11 +206,11 @@ void MACGrid::updateSources() {
 void MACGrid::initializeSolids() {
 
 // CUBE
-#if 1
+#if 0 // TURN ON OR OFF FOR OBSTACLES
     {
-        float mul = 8;
-        int minx = 3*mul, miny = 8*mul, minz = 0*mul;
-        int maxx = 6*mul, maxy = 9*mul, maxz = 0*mul;
+        float mul = 1;
+        int minx = 0*mul, miny = 8*mul, minz = 0*mul;
+        int maxx = 3*mul, maxy = 10*mul, maxz = 0*mul;
         for (int i = minx; i <= maxx; i++) {
             for (int j = miny; j <= maxy; j++) {
                 for (int k = minz; k <= maxz; k++) {
@@ -225,42 +224,16 @@ void MACGrid::initializeSolids() {
 // CUBE
 #if 0
     {
-        int minx = 20, miny = 0, minz = 0;
-        int maxx = 24, maxy = 16, maxz = 0;
-        for (int i = minx; i <= maxx; i++) {
-            for (int j = miny; j <= maxy; j++) {
-                for (int k = minz; k <= maxz; k++) {
+        float mul = 2;
+        int minx = 13*mul, miny = 12*mul, minz = 13*mul;
+        int maxx = 18*mul, maxy = 15*mul, maxz = 18*mul;
+        for (int i = minx; i <= maxx; i+=4) {
+            for (int k = minz; k <= maxz; k+=4) {
+                for (int j = miny; j <= maxy; j++) {
                     solidCells(i, j, k) = 1.0;
-                }
-            }
-        }
-    }
-#endif
-
-// CUBE
-#if 0
-    {
-        int minx = 18, miny = 24, minz = 0;
-        int maxx = 20, maxy = 40, maxz = 0;
-        for (int i = minx; i <= maxx; i++) {
-            for (int j = miny; j <= maxy; j++) {
-                for (int k = minz; k <= maxz; k++) {
-                    solidCells(i, j, k) = 1.0;
-                }
-            }
-        }
-    }
-#endif
-
-// CUBE
-#if 0
-    {
-        int minx = 18, miny = 48, minz = 0;
-        int maxx = 20, maxy = 64, maxz = 0;
-        for (int i = minx; i <= maxx; i++) {
-            for (int j = miny; j <= maxy; j++) {
-                for (int k = minz; k <= maxz; k++) {
-                    solidCells(i, j, k) = 1.0;
+                    solidCells(i+1, j, k) = 1.0;
+                    solidCells(i, j, k+1) = 1.0;
+                    solidCells(i+1, j, k+1) = 1.0;
                 }
             }
         }
@@ -786,12 +759,12 @@ void MACGrid::project(double dt) {
     }
 #else
     FOR_EACH_CELL {
-        double velLowX = (i > 0) ? mU(i, j, k) : 0.0;
-        double velHighX = (i + 1 < theDim[MACGrid::X]) ? mU(i + 1, j, k) : 0.0;
-        double velLowY = (j > 0) ? mV(i, j, k) : 0.0;
-        double velHighY = (j + 1 < theDim[MACGrid::Y]) ? mV(i, j + 1, k) : 0.0;
-        double velLowZ = (k > 0) ? mW(i, j, k) : 0.0;
-        double velHighZ = (k + 1 < theDim[MACGrid::Z]) ? mW(i, j, k + 1) : 0.0;
+        double velLowX = (i > 0 && solidCells(i, j, k) != 1.0) ? mU(i, j, k) : 0.0;
+        double velHighX = (i + 1 < theDim[MACGrid::X] && solidCells(i+1, j, k) != 1.0) ? mU(i + 1, j, k) : 0.0;
+        double velLowY = (j > 0 && solidCells(i, j, k) != 1.0) ? mV(i, j, k) : 0.0;
+        double velHighY = (j + 1 < theDim[MACGrid::Y] && solidCells(i, j+1, k) != 1.0) ? mV(i, j + 1, k) : 0.0;
+        double velLowZ = (k > 0 && solidCells(i, j, k) != 1.0) ? mW(i, j, k) : 0.0;
+        double velHighZ = (k + 1 < theDim[MACGrid::Z] && solidCells(i, j, k+1) != 1.0) ? mW(i, j, k + 1) : 0.0;
         d(i, j, k) = -((velHighX - velLowX) + (velHighY - velLowY) + (velHighZ - velLowZ)) / theCellSize;
     }
 #endif
@@ -1258,7 +1231,7 @@ void MACGrid::calculatePreconditioner(GridDataMatrix &A) {
     // TODO: Build the modified incomplete Cholesky preconditioner following Fig 4.2 on page 36 of Bridson's 2007 SIGGRAPH fluid course notes.
     //       This corresponds to filling in precon(i,j,k) for all cells
 
-#if 0
+#if MULTITHREADING
     std::thread t[4];
     int block = theDim[MACGrid::Z] / 4;
     for (int i = 0; i < 4; i++) {

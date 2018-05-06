@@ -37,25 +37,29 @@ void SmokeSim::setGridDimensions(int x, int y, int z)
 
 void SmokeSim::step()
 {
-	double dt = 0.1;//0.04;//0.1;
+	// time step size
+	double dt = 0.1;
 
-   // Step0: Gather user forces
-   mGrid.updateSources();
+	// update the sources - inject smoke into the system
+	mGrid.updateSources();
 
-   // Step1: Calculate new velocities
-   mGrid.advectVelocity(dt);
-   mGrid.addExternalForces(dt);
-   mGrid.project(dt);
+	// advect velocity
+	mGrid.advectVelocity(dt);
 
-   // Step2: Calculate new temperature
-   mGrid.advectTemperature(dt);
+	// add gravity, buoyancy, and vorticity confinement
+	mGrid.addExternalForces(dt);
 
-   // Step3: Calculate new density 
-   mGrid.advectDensity(dt);
+	// projection step
+	mGrid.project(dt);
 
-	// Step4: Advect rendering particles
+	// advect temperature
+	mGrid.advectTemperature(dt);
+
+	// advect density
+	mGrid.advectDensity(dt);
+
+	// advect rendering particles for visualization
 	mGrid.advectRenderingParticles(dt);
-
 
 	mTotalFrameNum++;
 }
