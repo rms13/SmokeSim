@@ -16,11 +16,10 @@
 // THREADS
 #include <thread>
 
-#define MULTITHREADING 0 // USE ONLY IF theDim[MACGrid::Z]>=4
+#define MULTITHREADING 1 // USE ONLY IF theDim[MACGrid::Z]>=4
 
 // Globals
 MACGrid target;
-
 
 // NOTE: x -> cols, z -> rows, y -> stacks
 MACGrid::RenderMode MACGrid::theRenderMode = SHEETS;
@@ -93,16 +92,16 @@ void MACGrid::initialize() {
 void MACGrid::updateSources() {
     // Set initial values for density, temperature, velocity
     int mul = 1;
-    int minx = 0*mul, miny = 0*mul, minz = 0*mul;
-    int maxx = 3*mul, maxy = 3*mul, maxz = 0*mul;
+    int minx = 3*mul, miny = 0*mul, minz = 3*mul;
+    int maxx = 4*mul, maxy = 2*mul, maxz = 4*mul;
 
     for (int i = minx; i <= maxx; i++) {
         for (int j = miny; j <= maxy; j++) {
             for (int k = minz; k <= maxz; k++) {
                 mV(i, j, k) = 3.0;
                 //mU(i, j, k) = 2.0;
-                mD(i, j, k) = 0.8;
-                mT(i, j, k) = 3.0;
+                mD(i, j, k) = 0.9;
+                mT(i, j, k) = 2.0;
             }
         }
     }
@@ -122,23 +121,24 @@ void MACGrid::updateSources() {
                     vec3 shift(a, b, c);
                     vec3 xp = cell_center + shift;
                     rendering_particles.push_back(xp);
-                    rendering_particles_colIdx.push_back(0);
+                    rendering_particles_colIdx.push_back(0); // USE 0, 1, OR 2 TO SWITCH BETWEEN WHITE, ORANGE, OR BLUE PARTICLE COLORS
                 }
             }
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if 0 // TURN ON OR OFF FOR MULTIPLE SOURCES
+#if 1 // TURN ON OR OFF FOR MULTIPLE SOURCES
     // Set initial values for density, temperature, velocity
-    minx = 29*mul, miny = 0*mul, minz = 0*mul;
-    maxx = 34*mul, maxy = 5*mul, maxz = 0*mul;
+    minx = 0*mul, miny = 0*mul, minz = 0*mul;
+    maxx = 1*mul, maxy = 2*mul, maxz = 1*mul;
 
     for (int i = minx; i <= maxx; i++) {
         for (int j = miny; j <= maxy; j++) {
             for (int k = minz; k <= maxz; k++) {
                 mV(i, j, k) = 2.0;
                 mU(i, j, k) = 2.0;
+                mW(i, j, k) = 1.0;
                 mD(i, j, k) = 0.9;
                 mT(i, j, k) = 2.0;
             }
@@ -165,19 +165,19 @@ void MACGrid::updateSources() {
 #endif
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#if 0
+#if 1
     // Set initial values for density, temperature, velocity
     minx = 6*mul, miny = 0*mul, minz = 6*mul;
-    maxx = 7*mul, maxy = 1*mul, maxz = 7*mul;
+    maxx = 7*mul, maxy = 2*mul, maxz = 7*mul;
 
     for (int i = minx; i <= maxx; i++) {
         for (int j = miny; j <= maxy; j++) {
             for (int k = minz; k <= maxz; k++) {
-                mU(i, j, k) = -2.0;
                 mV(i, j, k) = 2.0;
+                mU(i, j, k) = -2.0;
                 mW(i, j, k) = -1.0;
-                mD(i, j, k) = 1.0;
-                mT(i, j, k) = 1.0;
+                mD(i, j, k) = 0.9;
+                mT(i, j, k) = 2.0;
             }
         }
     }

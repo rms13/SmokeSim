@@ -7,8 +7,10 @@ const int numFrames = 400+10; // MAX NUMBER OF FRAMES BEFORE THE PROGRAM QUITS
 #ifdef _DEBUG
 const int theDim[3] = {4, 4, 1};
 #else
-const int theDim[3] = {32, 32, 32};
+const int theDim[3] = {8, 32, 8};
 #endif
+
+// MULTITHREADING CONTROL IN MAC_GRID.CPP
 
 const double theCellSize = 0.5;
 

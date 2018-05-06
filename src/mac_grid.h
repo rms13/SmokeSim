@@ -64,9 +64,6 @@ public:
     // MULTITHREADING: advectRenderingParticles
     void advectRenderingParticlesThread(int tid, double dt, int kmin, int kmax);
 
-    // source styling
-    //void updateSources_3interacting();
-
 public:
 
 	// rendering particles
@@ -148,7 +145,6 @@ protected:
 	GridData precon;
 
 	int currentStep;
-	int dir;
 };
 
 #endif
